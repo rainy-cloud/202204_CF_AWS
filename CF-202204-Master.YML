@@ -22,6 +22,7 @@ AWS::CloudFormation::Interface:
       - PrivateSubnet1Cidr
       - PrivateSubnet2Cidr
       - PrivateSubnet3Cidr
+      - SshAccessCidr
     - Label:
         default: Web Application
       Parameters: 
@@ -92,6 +93,9 @@ AWS::CloudFormation::Interface:
         default: Number of Subnets
       Subnet:
         default: Subnets
+      #Security Group Parameter Labels
+      SshAccessCidr:
+        default: SSH Access From
 
 #----------------------------------------------------------------
 Parameters:
@@ -215,6 +219,13 @@ Parameters:
       Description: AWS KMS Customer Master Key (CMK) to encrypt database cluster
       Type: String
 
+  #Security Group Parameters
+    SshAccessCidr:
+      AllowedPattern: ^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/([0-9]|[1-2][0-9]|3[0-2]))$
+      Description: The CIDR IP range that is permitted to SSH to bastion instance. Note - a value of 0.0.0.0/0 will allow access from ANY IP address.
+      Type: String
+      Default: 0.0.0.0/0
+
   
 #----------------------------------------------------------------
 Conditions:
@@ -251,7 +262,7 @@ Resources:
           !Ref PrivateSubnet2Cidr
         PrivateSubnet3Cidr:
           !Ref PrivateSubnet3Cidr
-      TemplateURL: #//TODO:
+      TemplateURL: https://github.com/rainy-cloud/202204_CF_AWS/blob/26c5da36d473a5b62037e2db9d8782d6024c13a4/CloudFormation001V3.YML
 
   MasterRDS:
     Condition: AvailableAWSRegion
@@ -277,7 +288,7 @@ Resources:
           !Ref NumberOfAZs
         Subnet:
           !GetAtt [ MasterVpc, Outputs.PrivateSubnet ] #//TODO:
-      TemplateURL: url.yaml #//TODO:
+      TemplateURL: https://github.com/rainy-cloud/202204_CF_AWS/blob/26c5da36d473a5b62037e2db9d8782d6024c13a4/CloudFormation001V3.YML
 
   MasterApp:
     Condition: AvailableAWSRegion
@@ -295,8 +306,18 @@ Resources:
           !GetAtt [ MasterSecurityGroups, Outputs.AppSecurityGroup ]
         InstanceSubnet:
           !GetAtt [ MasterVpc, Outputs.PublicSubnet ]
-      TemplateURL: #TODO:
+      TemplateURL: https://github.com/rainy-cloud/202204_CF_AWS/blob/26c5da36d473a5b62037e2db9d8782d6024c13a4/MasterSecurityGroups.YML
 
 
 
   MasterSecurityGroups: #//TODO:
+Condition: AvailableAWSRegion
+    DependsOn: newvpc
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      Parameters:
+        SshAccessCidr:
+          !Ref SshAccessCidr
+        Vpc:
+          !GetAtt [ MasterVpc, Outputs.Vpc ]
+      TemplateURL: https://github.com/rainy-cloud/202204_CF_AWS/blob/26c5da36d473a5b62037e2db9d8782d6024c13a4/CloudFormation001V3.YML
