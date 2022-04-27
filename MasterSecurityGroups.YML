@@ -1,0 +1,87 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Description: Reference Architecture to host a CF Name. Designed to be launched in eu-west2. 
+
+Metadata:
+  Author: Reyan Ahmed
+  Email: aws.reyan@gmail.com
+
+  AWS::CloudFormation::Interface:
+
+    ParameterGroups:
+    - Label:
+        default: Amazon Security Group Parameters
+      Parameters:
+      #Security Group Parameters
+        - SshAccessCidr
+        - Vpc
+        - SourceAccessCidr
+
+    ParameterLabels:
+      #Security Group Parameter Labels
+     SshAccessCidr:
+        default: SSH Access From
+     SourceAccessCidr:
+        default: Source Access From
+      Vpc:
+        default: Vpc Id
+
+
+Parameters:
+  #Security Group Parameters
+  SshAccessCidr:
+    AllowedPattern: ^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/([0-9]|[1-2][0-9]|3[0-2]))$
+    Description: The CIDR IP range that is permitted to SSH to App instance. Note - a value of 0.0.0.0/0 will allow access from ANY IP address.
+    Type: String
+    Default: 0.0.0.0/0
+  SourceAccessCidr:
+    AllowedPattern: ^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/([0-9]|[1-2][0-9]|3[0-2]))$
+    Description: The CIDR IP range that is permitted to access the Application. Note - a value of 0.0.0.0/0 will allow access from ANY IP address.
+    Type: String
+    Default: 0.0.0.0/0
+  Vpc:
+    AllowedPattern: ^(vpc-)([a-z0-9]{8}|[a-z0-9]{17})$
+    Description: The Vpc Id of an existing Vpc.
+    Type: AWS::EC2::VPC::Id
+
+
+Resources:
+  #Security Group Resource Creation
+
+#App Security Group
+AppSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for App Instances
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          SourceSecurityGroupId: !Ref SourceAccessCidr
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          SourceSecurityGroupId: !Ref SourceAccessCidr
+      VpcId:
+        !Ref Vpc
+
+# RDS Security Group
+  DatabaseSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for Amazon RDS cluster
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 3306
+          ToPort: 3306
+          SourceSecurityGroupId: !Ref AppSecurityGroup
+      VpcId:
+        !Ref Vpc
+
+Outputs:
+  DatabaseSecurityGroup:
+    Value: !Ref DatabaseSecurityGroup
+  AppSecurityGroup:
+    Value: !Ref AppSecurityGroup
+
+  
